@@ -1,0 +1,1 @@
+Your application could not be processed due to name mismatch with Aadhaar records.
