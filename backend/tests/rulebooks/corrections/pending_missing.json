@@ -1,0 +1,26 @@
+{
+  "version": "test-1.0.0",
+  "note": "SYNTHETIC test-only correction rulebook. Not official government rules. Used only by B3 tests.",
+  "rules": [
+    {
+      "rule_id": "corr_pending_update",
+      "fixes": "full_name",
+      "action": "Synthetic PENDING instruction that must never be applied.",
+      "authority": "Synthetic pending authority",
+      "depends_on": [],
+      "proof_needed": "Synthetic pending proof.",
+      "source_urls": ["https://example.gov/corr-pending"],
+      "verification_status": "UNVERIFIED"
+    },
+    {
+      "rule_id": "corr_verified_with_missing_dep",
+      "fixes": "full_name",
+      "action": "Verified step whose dependencies are unavailable and must be dropped.",
+      "authority": "Synthetic verified authority",
+      "depends_on": ["corr_never_defined", "corr_pending_update"],
+      "proof_needed": "Synthetic verified proof.",
+      "source_urls": ["https://example.gov/corr-verified"],
+      "verification_status": "VERIFIED"
+    }
+  ]
+}

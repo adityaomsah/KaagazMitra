@@ -1,0 +1,26 @@
+{
+  "version": "test-1.0.0",
+  "note": "SYNTHETIC test-only correction rulebook. Not official government rules. Used only by B3 tests.",
+  "rules": [
+    {
+      "rule_id": "corr_cycle_alpha",
+      "fixes": "full_name",
+      "action": "Synthetic step alpha that depends on beta.",
+      "authority": "Synthetic authority alpha",
+      "depends_on": ["corr_cycle_beta"],
+      "proof_needed": "Synthetic proof for alpha.",
+      "source_urls": ["https://example.gov/corr-alpha"],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "rule_id": "corr_cycle_beta",
+      "fixes": "full_name",
+      "action": "Synthetic step beta that depends on alpha.",
+      "authority": "Synthetic authority beta",
+      "depends_on": ["corr_cycle_alpha"],
+      "proof_needed": "Synthetic proof for beta.",
+      "source_urls": ["https://example.gov/corr-beta"],
+      "verification_status": "VERIFIED"
+    }
+  ]
+}

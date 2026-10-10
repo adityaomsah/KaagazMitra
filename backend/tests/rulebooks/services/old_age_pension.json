@@ -1,0 +1,67 @@
+{
+  "service": "old_age_pension",
+  "version": "test-1.0.0",
+  "note": "SYNTHETIC test-only rulebook. Not official government rules. Used only by B2 tests.",
+  "rules": [
+    {
+      "rule_id": "rule_name_consistency_verified",
+      "service": "old_age_pension",
+      "topic": "name_consistency",
+      "conditions": {
+        "fields": ["name"],
+        "severity": "supporting_doc",
+        "documents_required": ["aadhaar", "bank_passbook"]
+      },
+      "requirement": "The name on the Aadhaar must match the bank account holder name for direct benefit transfer. A marriage certificate can support a name change after marriage.",
+      "source_urls": ["https://example.gov/pension-name"],
+      "last_verified": "2025-01-15",
+      "verification_status": "VERIFIED",
+      "source_conflict": false
+    },
+    {
+      "rule_id": "rule_supporting_doc_verified",
+      "service": "old_age_pension",
+      "topic": "supporting_documents",
+      "conditions": {
+        "fields": ["name"],
+        "severity": "supporting_doc",
+        "documents_required": ["aadhaar", "marriage_certificate"]
+      },
+      "requirement": "When a surname changed after marriage, a marriage certificate is required to link the old and new names.",
+      "source_urls": ["https://example.gov/marriage-proof"],
+      "last_verified": "2025-01-15",
+      "verification_status": "VERIFIED",
+      "source_conflict": false
+    },
+    {
+      "rule_id": "rule_source_conflict_verified",
+      "service": "old_age_pension",
+      "topic": "age_proof",
+      "conditions": {
+        "fields": ["date_of_birth"],
+        "severity": "verify_at_office",
+        "conflict_note": "One official circular accepts a school marksheet as age proof while another requires Aadhaar only."
+      },
+      "requirement": "Age must be proven with an accepted document.",
+      "source_urls": ["https://example.gov/age-proof"],
+      "last_verified": "2025-01-15",
+      "verification_status": "VERIFIED",
+      "source_conflict": true
+    },
+    {
+      "rule_id": "rule_pending_not_applied",
+      "service": "old_age_pension",
+      "topic": "residence",
+      "conditions": {
+        "fields": ["address"],
+        "severity": "blocker",
+        "documents_required": ["aadhaar"]
+      },
+      "requirement": "Applicant must be a resident (PENDING verification - must NOT be treated as confirmed).",
+      "source_urls": ["https://example.gov/residence"],
+      "last_verified": "2025-01-15",
+      "verification_status": "UNVERIFIED",
+      "source_conflict": false
+    }
+  ]
+}

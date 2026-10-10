@@ -131,6 +131,14 @@ class CorrectionRule(BaseModel):
     proof_needed: str
     source_urls: List[str] = Field(default_factory=list)
     verification_status: VerificationStatus
+    action: Optional[str] = Field(
+        None,
+        description="Plain-language correction instruction exactly as written in the verified rulebook.",
+    )
+    authority: Optional[str] = Field(
+        None,
+        description="Office/authority that performs or accepts this correction.",
+    )
 
 
 class Finding(BaseModel):
@@ -150,6 +158,16 @@ class CorrectionStep(BaseModel):
     action: str
     depends_on: List[str] = Field(default_factory=list)
     is_deadlock: bool = False
+    authority: Optional[str] = Field(
+        None, description="Office/authority for this step (from the verified rulebook)."
+    )
+    proof_needed: Optional[str] = Field(
+        None, description="Officially required proof for this step (from the verified rulebook)."
+    )
+    order_unknown: bool = Field(
+        False,
+        description="True when dependency cycles make the step order indeterminate.",
+    )
 
 
 class ReadinessResult(BaseModel):

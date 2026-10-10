@@ -22,6 +22,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .extraction import extract_document as run_extraction
 from .matching import compare_documents
+from .planner import (
+    CYCLE_MESSAGE,
+    collect_sources,
+    load_correction_rules,
+    plan_corrections,
+    render_correction_dot,
+)
 from .readiness import check_readiness
 from .schemas import (
     CheckRequest,
@@ -180,8 +187,9 @@ def check(request: CheckRequest) -> CheckResponse:
 
     With USE_MOCK=0 this runs the real deterministic comparison
     (``compare_documents``) over the submitted documents, then the B2 readiness
-    engine (``check_readiness``) against the versioned rulebooks, recording
-    non-sensitive trace steps for both operations.
+    engine (``check_readiness``) and the B3 correction planner
+    (``plan_corrections``) against the versioned rulebooks, recording
+    non-sensitive trace steps for each operation.
     """
     if USE_MOCK:
         return CheckResponse.model_validate(load_mock("check_response.json"))
@@ -200,12 +208,24 @@ def check(request: CheckRequest) -> CheckResponse:
             mismatches=mismatches,
         )
 
+    # B3: plan corrections from verified correction rules only. Dependency
+    # cycles are surfaced as unresolved ordering questions, never resolved
+    # silently; missing/pending rules never produce steps.
+    with _Timer("plan_corrections", trace):
+        correction_rules = load_correction_rules()
+        correction_path = plan_corrections(readiness, correction_rules)
+        if any(step.order_unknown for step in correction_path):
+            if CYCLE_MESSAGE not in readiness.unresolved_questions:
+                readiness.unresolved_questions.append(CYCLE_MESSAGE)
+        sources = collect_sources(correction_path, correction_rules)
+        correction_path_dot = render_correction_dot(correction_path)
+
     return CheckResponse(
         mismatches=mismatches,
         readiness=readiness,
-        correction_path=[],
-        correction_path_dot="digraph correction_path {\n}\n",
-        sources=[],
+        correction_path=correction_path,
+        correction_path_dot=correction_path_dot,
+        sources=sources,
         trace=trace,
     )
 

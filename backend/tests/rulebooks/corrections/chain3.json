@@ -1,0 +1,36 @@
+{
+  "version": "test-1.0.0",
+  "note": "SYNTHETIC test-only correction rulebook. Not official government rules. Used only by B3 tests.",
+  "rules": [
+    {
+      "rule_id": "corr_third_update_record",
+      "fixes": "full_name",
+      "action": "Update the third record using the proof from the second step.",
+      "authority": "Office that issued the third record",
+      "depends_on": ["corr_second_update_record"],
+      "proof_needed": "Proof from the second step plus the third office's update form.",
+      "source_urls": ["https://example.gov/corr-third"],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "rule_id": "corr_first_obtain_proof",
+      "fixes": "full_name",
+      "action": "Obtain the officially accepted primary proof showing the correct full name.",
+      "authority": "Office that issued the primary proof",
+      "depends_on": [],
+      "proof_needed": "Primary name proof as accepted by the issuing office.",
+      "source_urls": ["https://example.gov/corr-first"],
+      "verification_status": "VERIFIED"
+    },
+    {
+      "rule_id": "corr_second_update_record",
+      "fixes": "full_name",
+      "action": "Update the second record using the proof from the first step.",
+      "authority": "Office that issued the second record",
+      "depends_on": ["corr_first_obtain_proof"],
+      "proof_needed": "Proof from the first step plus the second office's update form.",
+      "source_urls": ["https://example.gov/corr-second"],
+      "verification_status": "VERIFIED"
+    }
+  ]
+}

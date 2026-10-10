@@ -1,0 +1,22 @@
+{
+  "service": "no_coverage",
+  "version": "test-1.0.0",
+  "note": "SYNTHETIC test-only rulebook. Not official government rules. Used only by B2 tests.",
+  "rules": [
+    {
+      "rule_id": "rule_only_pending",
+      "service": "no_coverage",
+      "topic": "eligibility",
+      "conditions": {
+        "fields": ["name"],
+        "severity": "blocker",
+        "documents_required": ["aadhaar"]
+      },
+      "requirement": "Some eligibility requirement that is still pending verification.",
+      "source_urls": ["https://example.gov/pending"],
+      "last_verified": "2025-01-15",
+      "verification_status": "UNVERIFIED",
+      "source_conflict": false
+    }
+  ]
+}
