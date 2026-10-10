@@ -1,0 +1,83 @@
+{
+  "mismatches": [
+    {
+      "field": "full_name",
+      "document_ids": ["doc_aadhaar", "doc_pan", "doc_bank", "doc_marksheet", "doc_marriage"],
+      "values": {
+        "doc_aadhaar": "रहीम खान / Rahim Khan",
+        "doc_pan": "Rahman Khan",
+        "doc_bank": "Md Rahim Khan",
+        "doc_marksheet": "Rahim Uddin Khan",
+        "doc_marriage": "Rahim Khan"
+      },
+      "status": "POSSIBLE_VARIANT",
+      "explanation": "The name is spelled and abbreviated differently across documents (Rahman vs Rahim, Md prefix, Uddin middle name). RapidFuzz scores are high enough to treat these as likely variants of the same person rather than a different identity, but this is not certain. Do not remove any name component."
+    },
+    {
+      "field": "date_of_birth",
+      "document_ids": ["doc_aadhaar", "doc_marksheet"],
+      "values": {
+        "doc_aadhaar": "1985-04-12",
+        "doc_marksheet": "1985-04-12"
+      },
+      "status": "MATCH",
+      "explanation": "Date of birth is identical across Aadhaar and the Class 10 marksheet."
+    }
+  ],
+  "readiness": {
+    "service_id": "old_age_pension",
+    "status": "NEEDS_DOCUMENTS",
+    "findings": [
+      {
+        "mismatch_field": "full_name",
+        "classification": "NEEDS_SUPPORTING_DOC",
+        "reason": "For the pension, the name on the Aadhaar must match the bank account. The bank passbook reads 'Md Rahim Khan' while Aadhaar reads 'Rahim Khan'. A supporting document (e.g. a bank confirmation or a name-change/gazette copy) can link the two spellings.",
+        "rule_id": "rule_pension_name_match"
+      },
+      {
+        "mismatch_field": "full_name",
+        "classification": "VERIFY_AT_OFFICE",
+        "reason": "The PAN spelling 'Rahman Khan' differs from Aadhaar. PAN is not strictly required for this pension, but the office may ask about the difference. Verify in person.",
+        "rule_id": null
+      }
+    ],
+    "unresolved_questions": [
+      "Is the legal name 'Rahim Khan' or 'Rahman Khan'?",
+      "Does the bank allow the account name to be updated to match Aadhaar, or is a linking affidavit acceptable?"
+    ],
+    "next_steps": [
+      "Collect a bank confirmation letter that links 'Md Rahim Khan' to 'Rahim Khan'.",
+      "Carry all original documents to the pension office for name verification.",
+      "Do not remove 'Uddin' or 'Md' from any document yourself."
+    ]
+  },
+  "correction_path": [
+    {
+      "order": 1,
+      "rule_id": "corr_name_gazette",
+      "action": "If 'Rahim Khan' is the correct legal name, publish a name-change gazette notification to unify the spelling across PAN and bank records.",
+      "depends_on": [],
+      "is_deadlock": false
+    },
+    {
+      "order": 2,
+      "rule_id": "corr_bank_name_update",
+      "action": "Visit the bank with Aadhaar and the gazette copy to update the account holder name to match Aadhaar exactly.",
+      "depends_on": ["corr_name_gazette"],
+      "is_deadlock": false
+    },
+    {
+      "order": 3,
+      "rule_id": "corr_pan_name_update",
+      "action": "Apply to update the PAN name from 'Rahman Khan' to the Aadhaar spelling using the same gazette notification.",
+      "depends_on": ["corr_name_gazette"],
+      "is_deadlock": false
+    }
+  ],
+  "correction_path_dot": "digraph correction_path {\n  rankdir=LR;\n  node [shape=box, style=rounded];\n  \"1. Name-change gazette\";\n  \"2. Update bank account name\";\n  \"3. Update PAN name\";\n  \"1. Name-change gazette\" -> \"2. Update bank account name\";\n  \"1. Name-change gazette\" -> \"3. Update PAN name\";\n}\n",
+  "sources": [
+    "https://egazette.gov.in/",
+    "https://www.incometax.gov.in/",
+    "https://uidai.gov.in/"
+  ]
+}

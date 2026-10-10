@@ -14,8 +14,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Scope Python lib dirs to the backend so they don't also ignore frontend/src/lib.
+/backend/lib/
+/backend/lib64/
 parts/
 sdist/
 var/
@@ -240,6 +241,7 @@ node_modules/
 dist/
 build/
 .vite/
+*.tsbuildinfo
 
 # Editors
 .vscode/

@@ -1,251 +1,135 @@
-// Central API layer for KaagazMitra.
-// All frontend network access goes through this file (see AGENTS.md).
-//
-// USE_MOCK=true returns bundled JSON fixtures after a short delay so the UI
-// works without the FastAPI backend or Gemini. Flip to false to hit /api/...
-// (Vite proxies /api to http://localhost:8000).
+// Single entry point for every backend API call.
+// The Vite dev server proxies /api to http://localhost:8000 (see vite.config.ts).
 
 import type {
   CheckRequest,
   CheckResponse,
+  CorrectionRule,
+  DecodeRejectionRequest,
+  DecodeRejectionResponse,
   Document,
+  DocumentType,
   HealthResponse,
+  Mismatch,
+  ReportRequest,
+  ReportResponse,
+  ServiceRule,
+  TranslateRequest,
+  TranslateResponse,
 } from "@/types/api";
 
-import servicesData from "@/mock/services.json";
-import extractRahimData from "@/mock/extract_rahim.json";
-import extractAnitaData from "@/mock/extract_anita.json";
-import extractRameshData from "@/mock/extract_ramesh.json";
-import checkRahimData from "@/mock/check_rahim.json";
-import checkAnitaData from "@/mock/check_anita.json";
-import checkRameshData from "@/mock/check_ramesh.json";
+const BASE = "/api";
 
-// TEMP: contract gap — `Service` is not defined in src/types/api.ts, so the
-// frontend declares its own shape for the /api/services response. Remove this
-// once the backend adds a `Service` model to schemas.py.
-export interface Service {
-  id: string;
-  name: string;
-  description: string;
-  available: boolean;
-}
-
-// TEMP: contract gap — no request/response types exist in src/types/api.ts for
-// the rejection-decoder, translator, or report endpoints. These are frontend
-// placeholders; replace with the real backend schemas when available.
-export interface DecodeRejectionRequest {
-  text: string;
-}
-
-export interface DecodeRejectionResponse {
-  plain_language: string;
-  likely_reasons: string[];
-  suggested_actions: string[];
-  confidence: number;
-}
-
-export interface TranslateRequest {
-  text: string;
-  target_language: string;
-}
-
-export interface TranslateResponse {
-  original_text: string;
-  translated_text: string;
-  target_language: string;
-}
-
-export interface ReportSection {
-  heading: string;
-  body: string;
-}
-
-export interface ReportRequest {
-  service_id: string;
-  check: CheckResponse;
-}
-
-export interface ReportResponse {
-  service_id: string;
-  generated_at: string;
-  summary: string;
-  sections: ReportSection[];
-}
-
-// Toggle mock mode. Keep true until the backend is reachable.
-export const USE_MOCK = true;
-
-const API_BASE = "/api";
-const MOCK_DELAY_MS = 250;
-
-function delay(ms: number = MOCK_DELAY_MS): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Mock scenario selection. Keyed off a person's name found in a filename or in
-// the uploaded document ids/filenames.
-type ScenarioKey = "rahim" | "anita" | "ramesh";
-
-function detectScenario(haystack: string): ScenarioKey {
-  const s = haystack.toLowerCase();
-  if (s.includes("anita")) return "anita";
-  if (s.includes("ramesh") || s.includes("रमेश")) return "ramesh";
-  return "rahim";
-}
-
-// TEMP: contract gap — the `document_type` enum has no "land_record" value, so
-// Ramesh's land record mock uses the generic "other" type (see
-// src/mock/extract_ramesh.json). Also, `ExtractedField` has no
-// `transliterated_value`, so the Devanagari name is stored with the original in
-// `raw_value` ("रमेश कुमार") and the Latin form in `normalized_value`.
-const EXTRACT_MOCKS: Record<ScenarioKey, Document[]> = {
-  rahim: extractRahimData as Document[],
-  anita: extractAnitaData as Document[],
-  ramesh: extractRameshData as Document[],
-};
-
-const CHECK_MOCKS: Record<ScenarioKey, CheckResponse> = {
-  rahim: checkRahimData as CheckResponse,
-  anita: checkAnitaData as CheckResponse,
-  ramesh: checkRameshData as CheckResponse,
-};
-
-const MOCK_SERVICES = servicesData as Service[];
-
-// Minimal JSON fetch helper for the live (non-mock) path.
-async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, init);
-  if (!res.ok) {
-    throw new Error(`API ${path} failed: ${res.status} ${res.statusText}`);
+async function handle<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw new Error(`API error ${response.status}: ${response.statusText}`);
   }
-  return (await res.json()) as T;
+  return (await response.json()) as T;
 }
 
-const JSON_HEADERS: HeadersInit = { "Content-Type": "application/json" };
-
-// GET /api/health — liveness probe used by the connection banner.
+/** GET /api/health — liveness probe. */
 export async function getHealth(): Promise<HealthResponse> {
-  if (USE_MOCK) {
-    await delay();
-    return { status: "ok", version: "0.1.0", use_mock: true };
-  }
-  return apiRequest<HealthResponse>("/health");
+  const res = await fetch(`${BASE}/health`);
+  return handle<HealthResponse>(res);
 }
 
-// GET /api/services — list of available government services.
-export async function getServices(): Promise<Service[]> {
-  if (USE_MOCK) {
-    await delay();
-    return MOCK_SERVICES.map((service) => ({ ...service }));
-  }
-  return apiRequest<Service[]>("/services");
+/** GET /api/services — list verified service rules. */
+export async function listServices(): Promise<ServiceRule[]> {
+  const res = await fetch(`${BASE}/services`);
+  return handle<ServiceRule[]>(res);
 }
 
-// POST /api/extract — extract structured fields from one uploaded document.
-// TEMP: contract gap — there is no `ExtractRequest`/`ExtractResponse` type; the
-// frontend assumes a single-file upload returning Document[]. Adjust when the
-// backend contract is defined.
-export async function extract(file: File): Promise<Document[]> {
-  if (USE_MOCK) {
-    await delay();
-    const scenario = detectScenario(file.name);
-    return structuredClone(EXTRACT_MOCKS[scenario]);
-  }
+/** GET /api/services/:ruleId — fetch a single service rule. */
+export async function getService(ruleId: string): Promise<ServiceRule> {
+  const res = await fetch(`${BASE}/services/${ruleId}`);
+  return handle<ServiceRule>(res);
+}
+
+/** GET /api/correction-rules — list verified correction rules. */
+export async function listCorrectionRules(): Promise<CorrectionRule[]> {
+  const res = await fetch(`${BASE}/correction-rules`);
+  return handle<CorrectionRule[]>(res);
+}
+
+/** GET /api/correction-rules/:ruleId — fetch a single correction rule. */
+export async function getCorrectionRule(ruleId: string): Promise<CorrectionRule> {
+  const res = await fetch(`${BASE}/correction-rules/${ruleId}`);
+  return handle<CorrectionRule>(res);
+}
+
+/** GET /api/documents — list the currently loaded documents. */
+export async function listDocuments(): Promise<Document[]> {
+  const res = await fetch(`${BASE}/documents`);
+  return handle<Document[]>(res);
+}
+
+/** GET /api/mismatches — list detected mismatches. */
+export async function listMismatches(): Promise<Mismatch[]> {
+  const res = await fetch(`${BASE}/mismatches`);
+  return handle<Mismatch[]>(res);
+}
+
+/** POST /api/extract — extract fields from a document image (requires consent). */
+export async function extractDocument(
+  file: File,
+  consent: boolean,
+  documentType?: DocumentType,
+): Promise<Document> {
   const form = new FormData();
   form.append("file", file);
-  return apiRequest<Document[]>("/extract", { method: "POST", body: form });
+  form.append("consent", String(consent));
+  if (documentType) {
+    form.append("document_type", documentType);
+  }
+  const res = await fetch(`${BASE}/extract`, {
+    method: "POST",
+    body: form,
+  });
+  return handle<Document>(res);
 }
 
-// POST /api/check — run document consistency + readiness analysis.
-export async function check(request: CheckRequest): Promise<CheckResponse> {
-  if (USE_MOCK) {
-    await delay();
-    const haystack = request.documents
-      .map((doc) => `${doc.id} ${doc.filename}`)
-      .join(" ");
-    const scenario = detectScenario(haystack);
-    return structuredClone(CHECK_MOCKS[scenario]);
-  }
-  return apiRequest<CheckResponse>("/check", {
+/** POST /api/check — run the document-consistency and readiness check. */
+export async function runCheck(request: CheckRequest): Promise<CheckResponse> {
+  const res = await fetch(`${BASE}/check`, {
     method: "POST",
-    headers: JSON_HEADERS,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
   });
+  return handle<CheckResponse>(res);
 }
 
-// POST /api/decode-rejection — explain a rejection notice in plain language.
+/** POST /api/decode-rejection — explain a rejection reason in plain language. */
 export async function decodeRejection(
-  input: DecodeRejectionRequest,
+  request: DecodeRejectionRequest,
 ): Promise<DecodeRejectionResponse> {
-  if (USE_MOCK) {
-    await delay();
-    return {
-      plain_language:
-        "This is sample mock data. In mock mode we cannot decode a real rejection notice.",
-      likely_reasons: [
-        "Sample reason: a detail did not match across your documents.",
-      ],
-      suggested_actions: [
-        "Sample action: re-check the details on your documents and try again.",
-      ],
-      confidence: 0,
-    };
-  }
-  return apiRequest<DecodeRejectionResponse>("/decode-rejection", {
+  const res = await fetch(`${BASE}/decode-rejection`, {
     method: "POST",
-    headers: JSON_HEADERS,
-    body: JSON.stringify(input),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
   });
+  return handle<DecodeRejectionResponse>(res);
 }
 
-// POST /api/translate — translate guidance text into a target language.
+/** POST /api/translate — translate guidance text into a target language. */
 export async function translate(
-  input: TranslateRequest,
+  request: TranslateRequest,
 ): Promise<TranslateResponse> {
-  if (USE_MOCK) {
-    await delay();
-    return {
-      original_text: input.text,
-      translated_text: `[mock] ${input.text}`,
-      target_language: input.target_language,
-    };
-  }
-  return apiRequest<TranslateResponse>("/translate", {
+  const res = await fetch(`${BASE}/translate`, {
     method: "POST",
-    headers: JSON_HEADERS,
-    body: JSON.stringify(input),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
   });
+  return handle<TranslateResponse>(res);
 }
 
-// POST /api/report — build a shareable readiness summary from a check result.
-export async function report(input: ReportRequest): Promise<ReportResponse> {
-  if (USE_MOCK) {
-    await delay();
-    const { check } = input;
-    const sections: ReportSection[] = [
-      {
-        heading: "Status",
-        body: `Sample readiness status: ${check.readiness.status}.`,
-      },
-      {
-        heading: "Next steps",
-        body:
-          check.readiness.next_steps.join(" ") ||
-          "Sample: no next steps available.",
-      },
-    ];
-    return {
-      service_id: input.service_id,
-      generated_at: new Date().toISOString(),
-      summary: `Sample readiness summary for ${input.service_id}.`,
-      sections,
-    };
-  }
-  return apiRequest<ReportResponse>("/report", {
+/** POST /api/report — generate a shareable readiness report. */
+export async function generateReport(
+  request: ReportRequest,
+): Promise<ReportResponse> {
+  const res = await fetch(`${BASE}/report`, {
     method: "POST",
-    headers: JSON_HEADERS,
-    body: JSON.stringify(input),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
   });
+  return handle<ReportResponse>(res);
 }
-
-

@@ -1,0 +1,225 @@
+"""KaagazMitra FastAPI application.
+
+Endpoints are documented in docs/API_CONTRACT.md and mirror the Pydantic models
+in app/schemas.py (the source of truth).
+
+Current milestone: every endpoint returns data from backend/mock/*.json so the
+full flow works with USE_MOCK=1 and no Gemini access. Gemini Vision extraction
+and RapidFuzz comparison will replace these fixtures in later milestones.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+from typing import List, Optional
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+from .schemas import (
+    CheckRequest,
+    CheckResponse,
+    CorrectionRule,
+    DecodeRejectionRequest,
+    DecodeRejectionResponse,
+    Document,
+    DocumentType,
+    Mismatch,
+    ReportRequest,
+    ReportResponse,
+    ServiceRule,
+    TranslateRequest,
+    TranslateResponse,
+)
+
+# Load environment variables from backend/.env if present.
+load_dotenv()
+
+USE_MOCK = os.getenv("USE_MOCK", "1") == "1"
+MOCK_DIR = Path(__file__).resolve().parent.parent / "mock"
+
+app = FastAPI(title="KaagazMitra API", version="0.1.0")
+
+# The Vite dev server proxies /api -> localhost:8000, but allow CORS too so the
+# API can be called directly during development.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def load_mock(filename: str):
+    """Load and parse a JSON fixture from the mock directory."""
+    path = MOCK_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=500, detail=f"Missing mock fixture: {filename}")
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@app.get("/api/health")
+def health() -> dict:
+    """Simple liveness probe used by the frontend connection banner."""
+    return {
+        "status": "ok",
+        "version": app.version,
+        "use_mock": USE_MOCK,
+    }
+
+
+@app.get("/api/services", response_model=List[ServiceRule])
+def list_services() -> List[ServiceRule]:
+    """List the verified service rules (the rulebook)."""
+    return [ServiceRule.model_validate(item) for item in load_mock("services.json")]
+
+
+@app.get("/api/services/{rule_id}", response_model=ServiceRule)
+def get_service(rule_id: str) -> ServiceRule:
+    """Fetch a single service rule by id."""
+    for item in load_mock("services.json"):
+        if item["rule_id"] == rule_id:
+            return ServiceRule.model_validate(item)
+    raise HTTPException(status_code=404, detail=f"Service rule not found: {rule_id}")
+
+
+@app.get("/api/correction-rules", response_model=List[CorrectionRule])
+def list_correction_rules() -> List[CorrectionRule]:
+    """List the verified correction rules (how to fix mismatches)."""
+    return [CorrectionRule.model_validate(item) for item in load_mock("correction_rules.json")]
+
+
+@app.get("/api/correction-rules/{rule_id}", response_model=CorrectionRule)
+def get_correction_rule(rule_id: str) -> CorrectionRule:
+    """Fetch a single correction rule by id."""
+    for item in load_mock("correction_rules.json"):
+        if item["rule_id"] == rule_id:
+            return CorrectionRule.model_validate(item)
+    raise HTTPException(status_code=404, detail=f"Correction rule not found: {rule_id}")
+
+
+@app.get("/api/documents", response_model=List[Document])
+def list_documents() -> List[Document]:
+    """Return the demo (Rahim) documents currently loaded."""
+    return [Document.model_validate(item) for item in load_mock("documents.json")["documents"]]
+
+
+@app.get("/api/mismatches", response_model=List[Mismatch])
+def list_mismatches() -> List[Mismatch]:
+    """Return the mismatches detected across the demo documents."""
+    return [Mismatch.model_validate(item) for item in load_mock("check_response.json")["mismatches"]]
+
+
+@app.post("/api/extract", response_model=Document)
+async def extract_document(
+    file: UploadFile = File(...),
+    document_type: Optional[DocumentType] = Form(None),
+    consent: Optional[bool] = Form(None),
+) -> Document:
+    """Extract fields from an uploaded document image.
+
+    Multipart inputs: ``file`` (the image), optional ``document_type`` and a
+    required ``consent`` flag. Per AGENTS.md we must obtain consent before
+    sending images to cloud AI, so a missing or false consent is rejected.
+
+    With USE_MOCK=1 this returns a fixed demo document so the flow works without
+    Gemini. The file is never stored permanently (privacy rules in AGENTS.md).
+    """
+    if consent is not True:
+        raise HTTPException(
+            status_code=400,
+            detail="Consent is required before sending images to cloud AI.",
+        )
+    if USE_MOCK:
+        doc = Document.model_validate(load_mock("extract_response.json"))
+        if document_type is not None:
+            doc.document_type = document_type
+        return doc
+    # Real Gemini Vision extraction will be implemented here in a later milestone.
+    raise HTTPException(status_code=501, detail="Live extraction is not implemented yet.")
+
+
+@app.post("/api/check", response_model=CheckResponse)
+def check(request: CheckRequest) -> CheckResponse:
+    """Run the document-consistency and application-readiness check.
+
+    With USE_MOCK=1 this returns the prepared Rahim scenario regardless of the
+    request body; the body is still validated against CheckRequest.
+    """
+    if USE_MOCK:
+        return CheckResponse.model_validate(load_mock("check_response.json"))
+    # Real comparison + readiness logic will be implemented here in a later milestone.
+    raise HTTPException(status_code=501, detail="Live check is not implemented yet.")
+
+
+@app.post("/api/decode-rejection", response_model=DecodeRejectionResponse)
+def decode_rejection(request: DecodeRejectionRequest) -> DecodeRejectionResponse:
+    """Explain an application rejection reason in plain language.
+
+    With USE_MOCK=1 this returns a synthetic explanation derived from the
+    Rahim scenario. No real rules are invented; guidance stays generic.
+    """
+    if USE_MOCK:
+        return DecodeRejectionResponse(
+            plain_language=(
+                "Your application was returned because the name on your bank "
+                "account did not exactly match the name on your Aadhaar."
+            ),
+            category="name_mismatch",
+            possible_reasons=[
+                "Bank passbook shows 'Md Rahim Khan' while Aadhaar shows 'Rahim Khan'.",
+                "A middle name or prefix was added on one document but not another.",
+            ],
+            suggested_next_steps=[
+                "Carry a bank letter linking both spellings of your name.",
+                "Ask the office whether a one-and-the-same affidavit is accepted.",
+            ],
+        )
+    raise HTTPException(status_code=501, detail="Live rejection decoding is not implemented yet.")
+
+
+@app.post("/api/translate", response_model=TranslateResponse)
+def translate(request: TranslateRequest) -> TranslateResponse:
+    """Translate guidance text into a target language.
+
+    With USE_MOCK=1 this echoes the text with a clearly-marked placeholder so the
+    flow works without a live translation service.
+    """
+    if USE_MOCK:
+        return TranslateResponse(
+            source_text=request.text,
+            translated_text=f"[mock-{request.target_language}] {request.text}",
+            target_language=request.target_language,
+        )
+    raise HTTPException(status_code=501, detail="Live translation is not implemented yet.")
+
+
+@app.post("/api/report", response_model=ReportResponse)
+def report(request: ReportRequest) -> ReportResponse:
+    """Generate a shareable, plain-language readiness report.
+
+    With USE_MOCK=1 this returns a synthetic summary built from the Rahim
+    scenario check result.
+    """
+    if USE_MOCK:
+        check_data = load_mock("check_response.json")
+        readiness = check_data["readiness"]
+        return ReportResponse(
+            service_id=request.service_id,
+            summary=(
+                f"Your {request.service_id} application is not ready yet. "
+                "There is a name difference across your documents that should be "
+                "resolved or explained before you apply."
+            ),
+            key_findings=[
+                f"Readiness status: {readiness['status']}.",
+                "The name is spelled differently on your Aadhaar, PAN, bank "
+                "passbook and marksheet.",
+            ],
+            next_steps=readiness.get("next_steps", []),
+        )
+    raise HTTPException(status_code=501, detail="Live report generation is not implemented yet.")

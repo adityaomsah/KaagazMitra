@@ -117,3 +117,38 @@ export interface HealthResponse {
   version: string;
   use_mock: boolean;
 }
+
+export interface DecodeRejectionRequest {
+  rejection_text: string;
+  language: string;
+}
+
+export interface DecodeRejectionResponse {
+  plain_language: string;
+  category: string;
+  possible_reasons: string[];
+  suggested_next_steps: string[];
+}
+
+export interface TranslateRequest {
+  text: string;
+  target_language: string;
+}
+
+export interface TranslateResponse {
+  source_text: string;
+  translated_text: string;
+  target_language: string;
+}
+
+export interface ReportRequest {
+  service_id: string;
+  check: CheckResponse | null;
+}
+
+export interface ReportResponse {
+  service_id: string;
+  summary: string;
+  key_findings: string[];
+  next_steps: string[];
+}

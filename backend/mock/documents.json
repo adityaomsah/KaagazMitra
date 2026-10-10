@@ -1,0 +1,151 @@
+{
+  "documents": [
+    {
+      "id": "doc_aadhaar",
+      "document_type": "aadhaar",
+      "filename": "rahim_aadhaar.jpg",
+      "fields": [
+        {
+          "name": "full_name",
+          "raw_value": "रहीम खान",
+          "normalized_value": "Rahim Khan",
+          "confidence": 0.96,
+          "evidence": "Name field, front of card"
+        },
+        {
+          "name": "date_of_birth",
+          "raw_value": "12/04/1985",
+          "normalized_value": "1985-04-12",
+          "confidence": 0.91,
+          "evidence": "DOB field, front of card"
+        },
+        {
+          "name": "gender",
+          "raw_value": "Male",
+          "normalized_value": "male",
+          "confidence": 0.99,
+          "evidence": "Gender field, front of card"
+        },
+        {
+          "name": "aadhaar_number",
+          "raw_value": "XXXX XXXX 4821",
+          "normalized_value": "XXXX XXXX 4821",
+          "confidence": 0.93,
+          "evidence": "Aadhaar number, masked for safety"
+        }
+      ]
+    },
+    {
+      "id": "doc_pan",
+      "document_type": "pan",
+      "filename": "rahim_pan.jpg",
+      "fields": [
+        {
+          "name": "full_name",
+          "raw_value": "RAHMAN KHAN",
+          "normalized_value": "Rahman Khan",
+          "confidence": 0.88,
+          "evidence": "Name field"
+        },
+        {
+          "name": "father_name",
+          "raw_value": "ABDUL KHAN",
+          "normalized_value": "Abdul Khan",
+          "confidence": 0.85,
+          "evidence": "Father's name field"
+        },
+        {
+          "name": "pan_number",
+          "raw_value": "ABCDE1234F",
+          "normalized_value": "ABCDE1234F",
+          "confidence": 0.95,
+          "evidence": "PAN number"
+        }
+      ]
+    },
+    {
+      "id": "doc_bank",
+      "document_type": "bank_passbook",
+      "filename": "rahim_bank_passbook.jpg",
+      "fields": [
+        {
+          "name": "account_holder_name",
+          "raw_value": "MD RAHIM KHAN",
+          "normalized_value": "Md Rahim Khan",
+          "confidence": 0.9,
+          "evidence": "Account holder name, first page"
+        },
+        {
+          "name": "account_number",
+          "raw_value": "XXXXXX3947",
+          "normalized_value": "XXXXXX3947",
+          "confidence": 0.97,
+          "evidence": "Account number, first page"
+        },
+        {
+          "name": "ifsc",
+          "raw_value": "SBIN0001234",
+          "normalized_value": "SBIN0001234",
+          "confidence": 0.98,
+          "evidence": "IFSC code"
+        }
+      ]
+    },
+    {
+      "id": "doc_marksheet",
+      "document_type": "class10_marksheet",
+      "filename": "rahim_class10.jpg",
+      "fields": [
+        {
+          "name": "full_name",
+          "raw_value": "Rahim Uddin Khan",
+          "normalized_value": "Rahim Uddin Khan",
+          "confidence": 0.89,
+          "evidence": "Candidate name on marksheet"
+        },
+        {
+          "name": "date_of_birth",
+          "raw_value": "12-04-1985",
+          "normalized_value": "1985-04-12",
+          "confidence": 0.87,
+          "evidence": "DOB on marksheet header"
+        },
+        {
+          "name": "mother_name",
+          "raw_value": "Fatima Bibi",
+          "normalized_value": "Fatima Bibi",
+          "confidence": 0.84,
+          "evidence": "Mother's name on marksheet"
+        }
+      ]
+    },
+    {
+      "id": "doc_marriage",
+      "document_type": "marriage_certificate",
+      "filename": "rahim_marriage.jpg",
+      "fields": [
+        {
+          "name": "full_name",
+          "raw_value": "Rahim Khan",
+          "normalized_value": "Rahim Khan",
+          "confidence": 0.92,
+          "evidence": "Groom name on certificate"
+        },
+        {
+          "name": "spouse_name",
+          "raw_value": "Ayesha Begum",
+          "normalized_value": "Ayesha Begum",
+          "confidence": 0.9,
+          "evidence": "Bride name on certificate"
+        },
+        {
+          "name": "date_of_marriage",
+          "raw_value": "18/02/2010",
+          "normalized_value": "2010-02-18",
+          "confidence": 0.88,
+          "evidence": "Date of marriage"
+        }
+      ]
+    }
+  ]
+}
