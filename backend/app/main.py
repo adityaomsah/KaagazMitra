@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .extraction import extract_document as run_extraction
 from .matching import compare_documents
+from .readiness import check_readiness
 from .schemas import (
     CheckRequest,
     CheckResponse,
@@ -31,8 +32,6 @@ from .schemas import (
     Document,
     DocumentType,
     Mismatch,
-    ReadinessResult,
-    ReadinessStatus,
     ReportRequest,
     ReportResponse,
     ServiceRule,
@@ -180,9 +179,9 @@ def check(request: CheckRequest) -> CheckResponse:
     request body; the body is still validated against CheckRequest.
 
     With USE_MOCK=0 this runs the real deterministic comparison
-    (``compare_documents``) over the submitted documents and records non-sensitive
-    trace steps. Readiness rules are NOT evaluated yet (B2), so readiness stays
-    UNVERIFIED rather than guessing a verdict.
+    (``compare_documents``) over the submitted documents, then the B2 readiness
+    engine (``check_readiness``) against the versioned rulebooks, recording
+    non-sensitive trace steps for both operations.
     """
     if USE_MOCK:
         return CheckResponse.model_validate(load_mock("check_response.json"))
@@ -191,19 +190,16 @@ def check(request: CheckRequest) -> CheckResponse:
     with _Timer("compare_documents", trace):
         mismatches = compare_documents(request.documents)
 
-    # B1 does not implement readiness rules; leave readiness explicitly unresolved.
-    readiness = ReadinessResult(
-        service_id=request.service_id,
-        status=ReadinessStatus.UNVERIFIED,
-        findings=[],
-        unresolved_questions=[
-            "Readiness rules for this service have not been verified yet, so an "
-            "automatic ready/blocked decision cannot be made."
-        ],
-        next_steps=[
-            "Review each mismatch above with an official before applying."
-        ],
-    )
+    # B2: evaluate readiness against verified, source-linked rules only.
+    # Missing/pending rulebooks stay UNVERIFIED rather than guessing a verdict.
+    with _Timer("check_readiness", trace):
+        readiness = check_readiness(
+            service_id=request.service_id,
+            life_events=request.life_events,
+            documents=request.documents,
+            mismatches=mismatches,
+        )
+
     return CheckResponse(
         mismatches=mismatches,
         readiness=readiness,

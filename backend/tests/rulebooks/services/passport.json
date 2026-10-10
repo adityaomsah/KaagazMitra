@@ -1,0 +1,37 @@
+{
+  "service": "passport",
+  "version": "test-1.0.0",
+  "note": "SYNTHETIC test-only rulebook. Not official government rules. Used only by B2 tests.",
+  "rules": [
+    {
+      "rule_id": "rule_passport_relocation_blocker",
+      "service": "passport",
+      "topic": "address_relocation",
+      "conditions": {
+        "fields": ["address"],
+        "severity": "blocker",
+        "life_events": ["address_relocation"]
+      },
+      "requirement": "If the applicant recently relocated, the address on record must be updated before submitting the application.",
+      "source_urls": ["https://example.gov/passport-relocation"],
+      "last_verified": "2025-01-15",
+      "verification_status": "VERIFIED",
+      "source_conflict": false
+    },
+    {
+      "rule_id": "rule_passport_address",
+      "service": "passport",
+      "topic": "address",
+      "conditions": {
+        "fields": ["address"],
+        "severity": "supporting_doc",
+        "documents_required": ["aadhaar"]
+      },
+      "requirement": "A current address proof is required for a passport application.",
+      "source_urls": ["https://example.gov/passport-address"],
+      "last_verified": "2025-01-15",
+      "verification_status": "VERIFIED",
+      "source_conflict": false
+    }
+  ]
+}
