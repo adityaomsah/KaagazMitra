@@ -1,0 +1,35 @@
+[
+  {
+    "rule_id": "rule_pension_age",
+    "service": "old_age_pension",
+    "topic": "eligibility",
+    "conditions": { "min_age": 60 },
+    "requirement": "Applicant must be at least 60 years old on the date of application.",
+    "source_urls": ["https://nsap.nic.in/"],
+    "last_verified": "2025-01-15",
+    "verification_status": "VERIFIED",
+    "source_conflict": false
+  },
+  {
+    "rule_id": "rule_pension_name_match",
+    "service": "old_age_pension",
+    "topic": "document_consistency",
+    "conditions": { "documents_required": ["aadhaar", "bank_passbook"] },
+    "requirement": "The name on the Aadhaar must match the bank account holder name for direct benefit transfer.",
+    "source_urls": ["https://uidai.gov.in/", "https://nsap.nic.in/"],
+    "last_verified": "2025-01-15",
+    "verification_status": "VERIFIED",
+    "source_conflict": false
+  },
+  {
+    "rule_id": "rule_pension_age_proof",
+    "service": "old_age_pension",
+    "topic": "age_proof",
+    "conditions": { "acceptable_documents": ["aadhaar", "class10_marksheet"] },
+    "requirement": "Age must be proven with Aadhaar or a Class 10 marksheet showing date of birth.",
+    "source_urls": ["https://nsap.nic.in/"],
+    "last_verified": "2025-01-15",
+    "verification_status": "VERIFIED",
+    "source_conflict": false
+  }
+]

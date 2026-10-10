@@ -1,0 +1,13 @@
+# KaagazMitra backend dependencies
+# Python 3.11 (see .python-version)
+
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+google-genai
+python-dotenv
+rapidfuzz
+Pillow
+pytest
+httpx

@@ -1,0 +1,21 @@
+{
+  "id": "doc_uploaded",
+  "document_type": "aadhaar",
+  "filename": "uploaded_document.jpg",
+  "fields": [
+    {
+      "name": "full_name",
+      "raw_value": "रहीम खान",
+      "normalized_value": "Rahim Khan",
+      "confidence": 0.96,
+      "evidence": "Name field, front of card"
+    },
+    {
+      "name": "date_of_birth",
+      "raw_value": "12/04/1985",
+      "normalized_value": "1985-04-12",
+      "confidence": 0.91,
+      "evidence": "DOB field, front of card"
+    }
+  ]
+}

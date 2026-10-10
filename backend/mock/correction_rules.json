@@ -1,0 +1,26 @@
+[
+  {
+    "rule_id": "corr_name_gazette",
+    "fixes": "full_name",
+    "depends_on": [],
+    "proof_needed": "Gazette name-change notification plus a notarised affidavit.",
+    "source_urls": ["https://egazette.gov.in/"],
+    "verification_status": "VERIFIED"
+  },
+  {
+    "rule_id": "corr_bank_name_update",
+    "fixes": "full_name",
+    "depends_on": ["corr_name_gazette"],
+    "proof_needed": "Updated Aadhaar, gazette copy and bank KYC form.",
+    "source_urls": ["https://www.rbi.org.in/"],
+    "verification_status": "VERIFIED"
+  },
+  {
+    "rule_id": "corr_pan_name_update",
+    "fixes": "full_name",
+    "depends_on": ["corr_name_gazette"],
+    "proof_needed": "Gazette copy and PAN correction application form.",
+    "source_urls": ["https://www.incometax.gov.in/"],
+    "verification_status": "VERIFIED"
+  }
+]
