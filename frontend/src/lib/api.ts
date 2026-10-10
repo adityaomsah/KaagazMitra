@@ -17,8 +17,29 @@ import type {
   TranslateRequest,
   TranslateResponse,
 } from "@/types/api";
+import type { UploadedDocument } from "@/types/wizard";
+import { DEFAULT_PERSONA_ID, getPersona, type PersonaId } from "@/mock";
 
 const BASE = "/api";
+
+/**
+ * Frontend mock mode (VITE_USE_MOCK=1): extract() and check() return data from
+ * src/mock instead of calling the backend, so the flow works offline.
+ */
+export function isMockMode(): boolean {
+  const flag = (import.meta.env.VITE_USE_MOCK ?? "").toLowerCase();
+  return flag === "1" || flag === "true";
+}
+
+const MOCK_DELAY_MS = 600;
+
+function mockDelay<T>(value: T): Promise<T> {
+  return new Promise((resolve) => setTimeout(() => resolve(value), MOCK_DELAY_MS));
+}
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
 
 async function handle<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -96,6 +117,69 @@ export async function runCheck(request: CheckRequest): Promise<CheckResponse> {
     body: JSON.stringify(request),
   });
   return handle<CheckResponse>(res);
+}
+
+export interface MockOptions {
+  /** Demo persona whose mock data to use. Forces mock data when set. */
+  personaId?: PersonaId | null;
+}
+
+/**
+ * Mock extraction: for each upload, pick an unused persona document of the
+ * same type (else any unused one, else a copy), keeping the user's chosen type
+ * and file name. Images are never read in mock mode.
+ */
+function mockExtract(uploads: UploadedDocument[], personaId: PersonaId): Document[] {
+  const pool = clone(getPersona(personaId).documents);
+  const used = new Set<string>();
+  return uploads.map((upload, index) => {
+    const type = upload.documentType || "other";
+    const pick =
+      pool.find((d) => !used.has(d.id) && d.document_type === type) ??
+      pool.find((d) => !used.has(d.id));
+    const doc: Document = pick
+      ? pick
+      : { ...clone(pool[0]), id: `${pool[0].id}_${index + 1}` };
+    used.add(doc.id);
+    return { ...doc, document_type: type, filename: upload.file.name };
+  });
+}
+
+/**
+ * Step 3 -> 4: read every uploaded document. In mock mode returns persona data;
+ * otherwise calls POST /api/extract once per document.
+ */
+export async function extract(
+  uploads: UploadedDocument[],
+  consent: boolean,
+  options: MockOptions = {},
+): Promise<Document[]> {
+  if (!consent) {
+    throw new Error("Consent is required before reading your documents.");
+  }
+  if (options.personaId || isMockMode()) {
+    return mockDelay(mockExtract(uploads, options.personaId ?? DEFAULT_PERSONA_ID));
+  }
+  return Promise.all(
+    uploads.map((upload) =>
+      extractDocument(upload.file, consent, upload.documentType || undefined),
+    ),
+  );
+}
+
+/**
+ * Step 4 -> 5: compare the (user-edited) documents and get readiness guidance.
+ * In mock mode or for a demo persona returns that persona's prepared response.
+ */
+export async function check(
+  request: CheckRequest,
+  options: MockOptions = {},
+): Promise<CheckResponse> {
+  if (options.personaId || isMockMode()) {
+    const persona = getPersona(options.personaId ?? DEFAULT_PERSONA_ID);
+    return mockDelay(clone(persona.check));
+  }
+  return runCheck(request);
 }
 
 /** POST /api/decode-rejection — explain a rejection reason in plain language. */

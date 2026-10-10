@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { DemoSwitch, PersonaButtons } from "@/components/DemoBar";
 import { ProgressBar } from "@/components/ProgressBar";
 import { StepService } from "@/pages/StepService";
 import { StepSituation } from "@/pages/StepSituation";
 import { StepDocuments } from "@/pages/StepDocuments";
-import { PlaceholderStep } from "@/pages/PlaceholderStep";
-import type { DocumentType } from "@/types/api";
+import { StepReview } from "@/pages/StepReview";
+import { Results } from "@/pages/Results";
+import { extract, isMockMode } from "@/lib/api";
+import { getPersona, type PersonaId } from "@/mock";
+import type { CheckResponse, Document, DocumentType } from "@/types/api";
 import {
   TOTAL_STEPS,
   initialAnswers,
@@ -23,13 +28,23 @@ function makeDocId(): string {
 }
 
 /**
- * App hosts the five-step wizard and owns the single shared answers object:
- * service_id, life_events, uploaded documents (with types) and consent.
- * Steps 4 (Review) and 5 (Guidance) are minimal placeholders (out of F1b scope).
+ * App hosts the five-step wizard and owns the shared state: the answers object
+ * (service_id, life_events, uploads, consent), the extracted documents shown
+ * on Review, the check() result shown on Results, and the demo persona.
  */
 function App() {
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState<WizardAnswers>(initialAnswers);
+  /** Documents returned by extract() (or a demo persona), edited on Review. */
+  const [extracted, setExtracted] = useState<Document[]>([]);
+  const [checkResult, setCheckResult] = useState<CheckResponse | null>(null);
+  const [demoOn, setDemoOn] = useState(false);
+  /** Persona whose mock data is in use; null for the normal upload flow. */
+  const [personaId, setPersonaId] = useState<PersonaId | null>(null);
+  /** Bumped on new data so StepReview remounts with a fresh editable copy. */
+  const [reviewKey, setReviewKey] = useState(0);
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
 
   // Track created object URLs so we can revoke them on remove / unmount.
   const previewUrlsRef = useRef<Set<string>>(new Set());
@@ -104,13 +119,73 @@ function App() {
   const goNext = () => setStep((s) => Math.min(TOTAL_STEPS, s + 1));
   const goBack = () => setStep((s) => Math.max(1, s - 1));
 
+  /** Step 3 -> 4: read the uploaded documents, then show them for review. */
+  const extractAndReview = async () => {
+    setExtracting(true);
+    setExtractError(null);
+    try {
+      const docs = await extract(answers.documents, answers.consent);
+      setPersonaId(null);
+      setExtracted(docs);
+      setCheckResult(null);
+      setReviewKey((k) => k + 1);
+      setStep(4);
+    } catch {
+      setExtractError(
+        "We couldn't read your documents just now. Please check your connection and try again.",
+      );
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  /** Demo: jump straight to Review with a persona's mock data. */
+  const loadPersona = (id: PersonaId) => {
+    const persona = getPersona(id);
+    setAnswers((prev) => ({
+      ...prev,
+      service_id: persona.service_id,
+      life_events: [...persona.life_events],
+      consent: true,
+    }));
+    setPersonaId(id);
+    setExtracted(JSON.parse(JSON.stringify(persona.documents)) as Document[]);
+    setCheckResult(null);
+    setExtractError(null);
+    setReviewKey((k) => k + 1);
+    setStep(4);
+  };
+
+  const handleChecked = (result: CheckResponse, edited: Document[]) => {
+    setExtracted(edited); // keep the user's edits if they go back to Review
+    setCheckResult(result);
+    setStep(5);
+  };
+
+  const startOver = () => {
+    previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrlsRef.current.clear();
+    setAnswers(initialAnswers);
+    setExtracted([]);
+    setCheckResult(null);
+    setPersonaId(null);
+    setExtractError(null);
+    setStep(1);
+  };
+
+  const isSampleData = isMockMode() || personaId !== null;
+
   return (
     <main className="min-h-svh bg-background text-foreground">
       <div className="mx-auto flex min-h-svh max-w-2xl flex-col gap-8 px-4 py-8 sm:px-6">
         <header className="space-y-4">
-          <span className="text-2xl font-bold tracking-tight text-primary">
-            KaagazMitra
-          </span>
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-2xl font-bold tracking-tight text-primary">
+              KaagazMitra
+            </span>
+            <DemoSwitch on={demoOn} onToggle={setDemoOn} />
+          </div>
+          {demoOn && <PersonaButtons activePersona={personaId} onLoad={loadPersona} />}
           <ProgressBar current={step} total={TOTAL_STEPS} />
         </header>
 
@@ -134,32 +209,58 @@ function App() {
           )}
 
           {step === 3 && (
-            <StepDocuments
-              documents={answers.documents}
-              consent={answers.consent}
-              onAddFiles={addFiles}
-              onRemove={removeDocument}
-              onTypeChange={setDocumentType}
-              onConsentChange={setConsent}
-              onBack={goBack}
-              onContinue={goNext}
-            />
+            <div className="flex flex-col gap-4">
+              <StepDocuments
+                documents={answers.documents}
+                consent={answers.consent}
+                onAddFiles={addFiles}
+                onRemove={removeDocument}
+                onTypeChange={setDocumentType}
+                onConsentChange={setConsent}
+                onBack={goBack}
+                onContinue={() => {
+                  if (!extracting) void extractAndReview();
+                }}
+              />
+              {extracting && (
+                <p
+                  role="status"
+                  className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
+                >
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Reading your documents…
+                </p>
+              )}
+              {extractError && !extracting && (
+                <p
+                  role="status"
+                  className="rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground"
+                >
+                  {extractError}
+                </p>
+              )}
+            </div>
           )}
 
           {step === 4 && (
-            <PlaceholderStep
-              title="Review"
-              description="We'll bring together your service, situation and documents so you can confirm everything before we check them."
+            <StepReview
+              key={reviewKey}
+              documents={extracted}
+              serviceId={answers.service_id ?? ""}
+              lifeEvents={answers.life_events}
+              personaId={personaId}
               onBack={goBack}
-              onContinue={goNext}
+              onChecked={handleChecked}
             />
           )}
 
-          {step === 5 && (
-            <PlaceholderStep
-              title="Guidance"
-              description="Your personalised readiness guidance will appear here."
-              onBack={goBack}
+          {step === 5 && checkResult && (
+            <Results
+              result={checkResult}
+              documents={extracted}
+              isSampleData={isSampleData}
+              onBack={() => setStep(4)}
+              onStartOver={startOver}
             />
           )}
         </div>
