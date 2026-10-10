@@ -1,0 +1,30 @@
+[
+  {
+    "id": "ramesh-land",
+    "document_type": "other",
+    "filename": "ramesh_land_record.jpg",
+    "fields": [
+      {
+        "name": "full_name",
+        "raw_value": "रमेश कुमार",
+        "normalized_value": "Ramesh Kumar",
+        "confidence": null,
+        "evidence": "Name written in Devanagari script on the land record; transliterated to English for comparison (please confirm)"
+      }
+    ]
+  },
+  {
+    "id": "ramesh-aadhaar",
+    "document_type": "aadhaar",
+    "filename": "ramesh_aadhaar.jpg",
+    "fields": [
+      {
+        "name": "full_name",
+        "raw_value": "Ramesh Kumar",
+        "normalized_value": "Ramesh Kumar",
+        "confidence": 0.97,
+        "evidence": "Name printed below the photo on the Aadhaar"
+      }
+    ]
+  }
+]

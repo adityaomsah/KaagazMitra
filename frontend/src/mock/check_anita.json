@@ -1,0 +1,98 @@
+{
+  "mismatches": [
+    {
+      "field": "full_name",
+      "document_ids": ["anita-aadhaar", "anita-class10", "anita-bank", "anita-marriage"],
+      "values": {
+        "anita-aadhaar": "Anita Verma",
+        "anita-class10": "Anita Sharma",
+        "anita-bank": "Anita Verma",
+        "anita-marriage": "Anita Sharma"
+      },
+      "status": "DIFFERENCE",
+      "explanation": "The surname differs between documents: \"Verma\" on the Aadhaar and passbook, and \"Sharma\" on the Class 10 marksheet and marriage certificate. The marriage certificate may help explain a name change after marriage. Please confirm the name you want on the passport."
+    },
+    {
+      "field": "address",
+      "document_ids": ["anita-aadhaar", "anita-bank"],
+      "values": {
+        "anita-aadhaar": "Flat 12, Lake View Road, Guwahati",
+        "anita-bank": "House 4, MG Road, Jaipur"
+      },
+      "status": "DIFFERENCE",
+      "explanation": "The addresses differ between the Aadhaar (Guwahati) and the passbook (Jaipur). Please confirm which address is current."
+    },
+    {
+      "field": "date_of_birth",
+      "document_ids": ["anita-aadhaar", "anita-class10"],
+      "values": {
+        "anita-aadhaar": "1996-08-15",
+        "anita-class10": "1996-08-15"
+      },
+      "status": "MATCH",
+      "explanation": "Date of birth matches exactly on both documents."
+    }
+  ],
+  "readiness": {
+    "service_id": "passport_reissue",
+    "status": "NEEDS_DOCUMENTS",
+    "findings": [
+      {
+        "mismatch_field": "full_name",
+        "classification": "NEEDS_SUPPORTING_DOC",
+        "reason": "The surname differs across documents. The marriage certificate you provided may support a name change. Sample guidance (MOCK-001): confirm the name you want printed.",
+        "rule_id": "MOCK-001"
+      },
+      {
+        "mismatch_field": "address",
+        "classification": "NEEDS_SUPPORTING_DOC",
+        "reason": "Addresses differ between documents. Sample guidance (MOCK-002): confirm your current address.",
+        "rule_id": "MOCK-002"
+      },
+      {
+        "mismatch_field": "date_of_birth",
+        "classification": "NOT_RELEVANT",
+        "reason": "Date of birth matches, so no action is needed for this field.",
+        "rule_id": null
+      }
+    ],
+    "unresolved_questions": [
+      "Which surname would you like on the passport — Sharma or Verma?",
+      "Which address is current — Guwahati or Jaipur?"
+    ],
+    "next_steps": [
+      "Confirm the name you want printed on the passport.",
+      "Confirm your current address.",
+      "Keep the marriage certificate ready in case it is requested.",
+      "Return here once you have this information to review again."
+    ]
+  },
+  "correction_path": [
+    {
+      "order": 1,
+      "rule_id": "MOCK-001",
+      "action": "Sample step: confirm the name you want printed with the issuing office.",
+      "depends_on": [],
+      "is_deadlock": false
+    },
+    {
+      "order": 2,
+      "rule_id": "MOCK-002",
+      "action": "Sample step: confirm your current address with the issuing office.",
+      "depends_on": ["MOCK-001"],
+      "is_deadlock": false
+    },
+    {
+      "order": 3,
+      "rule_id": "MOCK-003",
+      "action": "Sample step: re-check your documents once the details above are confirmed.",
+      "depends_on": ["MOCK-002"],
+      "is_deadlock": false
+    }
+  ],
+  "correction_path_dot": "digraph correction_path {\n  rankdir=LR;\n  \"MOCK-001\" [label=\"Confirm name\"];\n  \"MOCK-002\" [label=\"Confirm address\"];\n  \"MOCK-003\" [label=\"Re-check documents\"];\n  \"MOCK-001\" -> \"MOCK-002\";\n  \"MOCK-002\" -> \"MOCK-003\";\n}",
+  "sources": [
+    "https://www.passportindia.gov.in/",
+    "https://uidai.gov.in/"
+  ]
+}

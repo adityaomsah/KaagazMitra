@@ -1,0 +1,4 @@
+# The repo-root .gitignore ignores any "lib/" directory (a Python packaging
+# rule). That would wrongly exclude this frontend's src/lib helpers, so
+# re-include them here.
+!src/lib/
