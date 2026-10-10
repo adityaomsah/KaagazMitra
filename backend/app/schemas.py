@@ -75,6 +75,14 @@ class ExtractedField(BaseModel):
         None, ge=0.0, le=1.0, description="Extraction confidence estimate."
     )
     evidence: str = Field(..., description="Where on the document the value was read from.")
+    transliterated_value: Optional[str] = Field(
+        None,
+        description="Latin-script transliteration when the printed value is in another script.",
+    )
+    needs_confirmation: bool = Field(
+        False,
+        description="True when the field is missing or its confidence is below 0.7.",
+    )
 
 
 class Document(BaseModel):
@@ -94,6 +102,10 @@ class Mismatch(BaseModel):
     values: Dict[str, str] = Field(default_factory=dict)
     status: MismatchStatus
     explanation: str
+    differences_explained: List[str] = Field(
+        default_factory=list,
+        description="Normalisation assumptions and notes behind the status.",
+    )
 
 
 class ServiceRule(BaseModel):
@@ -158,6 +170,17 @@ class CheckRequest(BaseModel):
     documents: List[Document] = Field(default_factory=list)
 
 
+class TraceStep(BaseModel):
+    """A non-sensitive processing step recorded for transparency/debugging.
+
+    Never contains document contents or personal data — only the operation name
+    and how long it took.
+    """
+
+    operation: str
+    duration_ms: float
+
+
 class CheckResponse(BaseModel):
     """Full response for a readiness check."""
 
@@ -166,6 +189,10 @@ class CheckResponse(BaseModel):
     correction_path: List[CorrectionStep] = Field(default_factory=list)
     correction_path_dot: str
     sources: List[str] = Field(default_factory=list)
+    trace: List[TraceStep] = Field(
+        default_factory=list,
+        description="Non-sensitive operation timings (no personal data).",
+    )
 
 
 class DecodeRejectionRequest(BaseModel):

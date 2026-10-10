@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -19,6 +20,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
+from .extraction import extract_document as run_extraction
+from .matching import compare_documents
 from .schemas import (
     CheckRequest,
     CheckResponse,
@@ -28,9 +31,12 @@ from .schemas import (
     Document,
     DocumentType,
     Mismatch,
+    ReadinessResult,
+    ReadinessStatus,
     ReportRequest,
     ReportResponse,
     ServiceRule,
+    TraceStep,
     TranslateRequest,
     TranslateResponse,
 )
@@ -60,6 +66,27 @@ def load_mock(filename: str):
     if not path.exists():
         raise HTTPException(status_code=500, detail=f"Missing mock fixture: {filename}")
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+class _Timer:
+    """Context manager that records a non-sensitive operation + its duration.
+
+    Only the operation name and elapsed milliseconds are captured — never any
+    document contents or personal data.
+    """
+
+    def __init__(self, operation: str, trace: List[TraceStep]):
+        self.operation = operation
+        self.trace = trace
+        self._start = 0.0
+
+    def __enter__(self) -> "_Timer":
+        self._start = time.perf_counter()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        duration_ms = (time.perf_counter() - self._start) * 1000.0
+        self.trace.append(TraceStep(operation=self.operation, duration_ms=round(duration_ms, 2)))
 
 
 @app.get("/api/health")
@@ -139,8 +166,10 @@ async def extract_document(
         if document_type is not None:
             doc.document_type = document_type
         return doc
-    # Real Gemini Vision extraction will be implemented here in a later milestone.
-    raise HTTPException(status_code=501, detail="Live extraction is not implemented yet.")
+    # Live mode: real Gemini Vision extraction. The image bytes are read into
+    # memory only and never written to disk (privacy rules in AGENTS.md).
+    image_bytes = await file.read()
+    return run_extraction(image_bytes, document_type, file.filename or "upload")
 
 
 @app.post("/api/check", response_model=CheckResponse)
@@ -149,11 +178,40 @@ def check(request: CheckRequest) -> CheckResponse:
 
     With USE_MOCK=1 this returns the prepared Rahim scenario regardless of the
     request body; the body is still validated against CheckRequest.
+
+    With USE_MOCK=0 this runs the real deterministic comparison
+    (``compare_documents``) over the submitted documents and records non-sensitive
+    trace steps. Readiness rules are NOT evaluated yet (B2), so readiness stays
+    UNVERIFIED rather than guessing a verdict.
     """
     if USE_MOCK:
         return CheckResponse.model_validate(load_mock("check_response.json"))
-    # Real comparison + readiness logic will be implemented here in a later milestone.
-    raise HTTPException(status_code=501, detail="Live check is not implemented yet.")
+
+    trace: List[TraceStep] = []
+    with _Timer("compare_documents", trace):
+        mismatches = compare_documents(request.documents)
+
+    # B1 does not implement readiness rules; leave readiness explicitly unresolved.
+    readiness = ReadinessResult(
+        service_id=request.service_id,
+        status=ReadinessStatus.UNVERIFIED,
+        findings=[],
+        unresolved_questions=[
+            "Readiness rules for this service have not been verified yet, so an "
+            "automatic ready/blocked decision cannot be made."
+        ],
+        next_steps=[
+            "Review each mismatch above with an official before applying."
+        ],
+    )
+    return CheckResponse(
+        mismatches=mismatches,
+        readiness=readiness,
+        correction_path=[],
+        correction_path_dot="digraph correction_path {\n}\n",
+        sources=[],
+        trace=trace,
+    )
 
 
 @app.post("/api/decode-rejection", response_model=DecodeRejectionResponse)
